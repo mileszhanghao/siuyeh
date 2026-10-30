@@ -6,7 +6,7 @@ on:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: backend
@@ -17,6 +17,13 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v5
+      - name: Pull Postgres (with retries; registry pulls on CI runners sometimes fail)
+        run: |
+          for i in 1 2 3 4 5; do
+            docker pull public.ecr.aws/docker/library/postgres:16-alpine && exit 0
+            echo "pull failed (attempt $i), retrying"; sleep $((i * 10))
+          done
+          exit 1
       # Unit tests plus Testcontainers integration tests (Docker is available on GitHub runners).
       - name: Build and test
         run: ./gradlew build --no-daemon 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
@@ -57,7 +64,7 @@ jobs:
           done
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
